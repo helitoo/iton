@@ -135,7 +135,8 @@ body {
   blockquote,
   table,
   tr,
-  figure {
+  figure,
+  .code-block-wrapper {
     page-break-inside: avoid;
     break-inside: avoid;
   }
@@ -144,5 +145,25 @@ body {
   code {
     white-space: pre-wrap !important;
     word-break: break-word !important;
+  }
+
+  .code-block-wrapper {
+    position: relative !important;
+  }
+
+  .code-block-badge {
+    position: absolute !important;
+    top: 0.5rem !important;
+    right: 0.5rem !important;
+    z-index: 10 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    line-height: 1 !important;
+    padding: 0.125rem 0.5rem !important;
+    font-size: 0.75rem !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }

@@ -387,6 +387,7 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
           src={resolvedSrc}
           alt={alt}
           className="max-w-full rounded-md my-3 mx-auto"
+          draggable={false}
           {...props}
         />
       );
@@ -493,7 +494,7 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
       const codeEl = Array.isArray(children) ? children[0] : children;
       const codeClassName =
         codeEl && codeEl.props ? codeEl.props.className : "";
-      const match = /language-(\w+)/.exec(codeClassName || "");
+      const match = /language-([\w+#-]+)/.exec(codeClassName || "");
       const codeText =
         codeEl && codeEl.props
           ? String(codeEl.props.children).replace(/\n$/, "")
@@ -503,17 +504,28 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
         return <MermaidBlock code={codeText} />;
       }
 
+      const lang = match ? match[1] : null;
+
       return (
-        <pre
-          className="bg-white border border-gray-200 rounded-md p-4 overflow-x-auto my-4 text-sm"
-          {...props}
-        >
-          {children}
-        </pre>
+        <div className="code-block-wrapper relative group my-4">
+          {lang && (
+            <div className="code-block-badge absolute top-2 right-2 z-10 inline-flex items-center justify-center px-2 py-0.5 text-xs font-mono font-medium text-gray-500 bg-gray-100/90 border border-gray-200/80 rounded shadow-xs select-none pointer-events-none leading-none">
+              {lang}
+            </div>
+          )}
+          <pre
+            className={`bg-white border border-gray-200 rounded-md p-4 ${
+              lang ? "pr-16" : ""
+            } overflow-x-auto my-0 text-sm`}
+            {...props}
+          >
+            {children}
+          </pre>
+        </div>
       );
     },
     code({ className, children, ...props }) {
-      const match = /language-(\w+)/.exec(className || "");
+      const match = /language-([\w+#-]+)/.exec(className || "");
       const isFenced = !!match;
       if (isFenced) {
         const lang = match[1];
@@ -527,7 +539,7 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
           } else {
             highlightedHtml = hljs.highlightAuto(codeText).value;
           }
-        } catch (err) {
+        } catch {
           highlightedHtml = codeText;
         }
         return (
