@@ -1,89 +1,191 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { useLocation, useOutletContext } from 'react-router-dom'
-import { useContentData } from '../../utils/context/ContentContext'
-import { findFileForRoute, fileKind } from '../../utils/pathUtils'
-import { contentUrl } from '../../utils/context/manifest'
-import MarkdownView from './MarkdownView'
+import React, { useEffect, useMemo, useState, useRef } from "react";
+import { useLocation, useOutletContext } from "react-router-dom";
+import { useContentData } from "../../utils/context/ContentContext";
+import { findFileForRoute, fileKind } from "../../utils/pathUtils";
+import { contentUrl } from "../../utils/context/manifest";
+import MarkdownView from "./MarkdownView";
+import LoadingScene from "../scenes/loadingScene";
+import FailedScene from "../scenes/failedScene";
 
 export default function ContentPage() {
-  const { manifest, loading: manifestLoading } = useContentData()
-  const location = useLocation()
-  const { setActiveFileName } = useOutletContext()
+  const { manifest, loading: manifestLoading } = useContentData();
+  const location = useLocation();
+  const { setActiveFileName } = useOutletContext();
 
-  const routePath = location.pathname.replace(/^\//, '')
+  const routePath = location.pathname.replace(/^\//, "");
   const file = useMemo(
     () => (manifestLoading ? null : findFileForRoute(manifest, routePath)),
     [manifest, manifestLoading, routePath]
-  )
+  );
 
-  const [text, setText] = useState('')
-  const [status, setStatus] = useState('loading') // loading | ready | error
+  const [text, setText] = useState("");
+  const [status, setStatus] = useState("loading"); // loading | ready | error
+  const [errorMessage, setErrorMessage] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
+  const timeoutRef = useRef(null);
+
+  const handleReload = () => {
+    setStatus("loading");
+    setErrorMessage("");
+    setReloadKey((k) => k + 1);
+  };
+
+  const handleMediaLoad = () => {
+    setStatus((prev) => {
+      if (prev === "loading") {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        return "ready";
+      }
+      return prev;
+    });
+  };
+
+  const handleMediaError = (defaultMsg) => {
+    setStatus((prev) => {
+      if (prev === "loading") {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        setErrorMessage(defaultMsg);
+        return "error";
+      }
+      return prev;
+    });
+  };
 
   useEffect(() => {
-    setActiveFileName(file ? file.name : '')
-  }, [file, setActiveFileName])
+    setActiveFileName(file ? file.name : "");
+  }, [file, setActiveFileName]);
 
   useEffect(() => {
-    if (manifestLoading) return
-    if (!file) {
-      setStatus('error')
-      return
+    setStatus("loading");
+    setErrorMessage("");
+
+    // 10-second timeout limit
+    timeoutRef.current = setTimeout(() => {
+      setStatus((currentStatus) => {
+        if (currentStatus === "loading") {
+          setErrorMessage("Thời gian tải nội dung quá 10 giây. Vui lòng thử lại.");
+          return "error";
+        }
+        return currentStatus;
+      });
+    }, 10000);
+
+    if (manifestLoading) {
+      return () => {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      };
     }
-    const kind = fileKind(file.ext)
-    if (kind === 'markdown' || kind === 'text') {
-      setStatus('loading')
+
+    if (!file) {
+      setStatus("error");
+      setErrorMessage("Không tìm thấy nội dung.");
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      return () => {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      };
+    }
+
+    const kind = fileKind(file.ext);
+    if (kind === "markdown" || kind === "text") {
+      let isSubscribed = true;
       fetch(contentUrl(file.path))
         .then((res) => {
-          if (!res.ok) throw new Error('not ok')
-          return res.text()
+          if (!res.ok) throw new Error("Không thể tải tệp nội dung.");
+          return res.text();
         })
         .then((t) => {
-          setText(t)
-          setStatus('ready')
+          if (isSubscribed) {
+            setText(t);
+            setStatus("ready");
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+          }
         })
-        .catch(() => setStatus('error'))
+        .catch((err) => {
+          if (isSubscribed) {
+            setErrorMessage(err.message || "Không thể tải nội dung.");
+            setStatus("error");
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+          }
+        });
+
+      return () => {
+        isSubscribed = false;
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      };
     } else {
-      setStatus('ready')
+      // For image and pdf (iframe), status is updated via onLoad / onError
+      return () => {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      };
     }
-  }, [file, manifestLoading])
+  }, [file, manifestLoading, routePath, reloadKey]);
 
-  if (manifestLoading || status === 'loading') {
+  if (status === "error" || (!manifestLoading && !file)) {
     return (
-      <div className="px-6 py-10 text-gray-400 text-sm">Đang tải nội dung...</div>
-    )
+      <FailedScene
+        message={errorMessage || "Không tìm thấy nội dung."}
+        onReload={handleReload}
+      />
+    );
   }
 
-  if (!file || status === 'error') {
-    return (
-      <div className="flex flex-col items-center justify-center px-6 py-24 text-center">
-        <h1 className="text-xl font-bold text-gray-800 mb-1">Không tìm thấy nội dung</h1>
-        <p className="text-gray-500 text-sm">
-          Không tìm thấy.
-        </p>
-      </div>
-    )
+  if (!file) {
+    return <LoadingScene message="Đang tải..." />;
   }
 
-  const kind = fileKind(file.ext)
+  const kind = fileKind(file.ext);
 
-  if (kind === 'image') {
+  if (kind === "image") {
     return (
-      <div className="px-6 py-8 flex justify-center">
-        <img src={contentUrl(file.path)} alt={file.name} className="max-w-full rounded-md shadow-sm" />
-      </div>
-    )
+      <>
+        {(manifestLoading || status === "loading") && (
+          <LoadingScene message="Đang tải hình ảnh..." />
+        )}
+        <div
+          className={`px-6 py-8 flex justify-center ${
+            status === "loading" ? "hidden" : ""
+          }`}
+        >
+          <img
+            src={contentUrl(file.path)}
+            alt={file.name}
+            onLoad={handleMediaLoad}
+            onError={() => handleMediaError("Không thể tải hình ảnh.")}
+            className="max-w-full rounded-md shadow-sm"
+          />
+        </div>
+      </>
+    );
   }
 
-  if (kind === 'pdf') {
+  if (kind === "pdf") {
     return (
-      <div className="w-full" style={{ height: 'calc(100vh - 3.5rem)' }}>
-        <iframe title={file.name} src={contentUrl(file.path)} className="w-full h-full border-0" />
-      </div>
-    )
+      <>
+        {(manifestLoading || status === "loading") && (
+          <LoadingScene message="Đang tải tệp PDF..." />
+        )}
+        <div
+          className={`w-full ${status === "loading" ? "hidden" : ""}`}
+          style={{ height: "calc(100vh - 3.5rem)" }}
+        >
+          <iframe
+            title={file.name}
+            src={contentUrl(file.path)}
+            onLoad={handleMediaLoad}
+            onError={() => handleMediaError("Không thể tải tệp PDF.")}
+            className="w-full h-full border-0"
+          />
+        </div>
+      </>
+    );
   }
 
-  if (kind === 'markdown') {
-    return <MarkdownView file={file} raw={text} manifest={manifest} />
+  if (manifestLoading || status === "loading") {
+    return <LoadingScene message="Đang tải nội dung..." />;
+  }
+
+  if (kind === "markdown") {
+    return <MarkdownView file={file} raw={text} manifest={manifest} />;
   }
 
   // Plain text / other raw text formats
@@ -93,6 +195,5 @@ export default function ContentPage() {
         {text}
       </pre>
     </div>
-  )
+  );
 }
-
