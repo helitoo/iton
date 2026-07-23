@@ -15,7 +15,7 @@ export default function Navbar({ activeFileName, onToggleSidebar }) {
       </div>
 
       <div
-        className="hidden sm:block text-sm text-gray-500 max-w-[220px] truncate"
+        className="print-page-title hidden sm:block text-sm text-gray-500 max-w-[220px] truncate"
         title={activeFileName || ""}
       >
         {activeFileName}

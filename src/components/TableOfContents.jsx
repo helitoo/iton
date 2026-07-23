@@ -47,13 +47,13 @@ export default function TableOfContents({ headings }) {
     <>
       {open && (
         <div
-          className="fixed inset-0 z-40 bg-black/10 md:bg-transparent"
+          className="fixed inset-0 z-40 bg-black/10 md:bg-transparent toc-container"
           onClick={() => setOpen(false)}
         />
       )}
 
       {open && (
-        <div className="fixed bottom-20 right-4 z-50 w-64 h-[70vh] overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl p-2">
+        <div className="fixed bottom-20 right-4 z-50 w-64 h-[70vh] overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl p-2 toc-container">
           <ul>
             {tree.map((node) => (
               <TocNode key={node.id} node={node} onNavigate={navigate} />
@@ -64,7 +64,7 @@ export default function TableOfContents({ headings }) {
 
       <button
         onClick={() => setOpen((o) => !o)}
-        className="cursor-pointer fixed bottom-6 right-4 z-50 w-12 h-12 rounded-full bg-blue-600 text-white shadow-lg flex items-center justify-center hover:bg-blue-700"
+        className="cursor-pointer fixed bottom-6 right-4 z-50 w-12 h-12 rounded-full bg-blue-600 text-white shadow-lg flex items-center justify-center hover:bg-blue-700 toc-button"
         aria-label="Bật/tắt mục lục"
       >
         {open ? <VscClose size={20} /> : <VscListUnordered size={20} />}

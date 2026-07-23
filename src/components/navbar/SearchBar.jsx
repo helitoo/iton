@@ -49,7 +49,7 @@ export default function SearchBar() {
   }
 
   return (
-    <div ref={boxRef} className="relative w-full max-w-md">
+    <div ref={boxRef} className="relative w-full max-w-md search-bar">
       <div className="flex items-center gap-2 bg-gray-100 rounded-md px-3 py-2 focus-within:ring-2 focus-within:ring-blue-600">
         <VscSearch size={16} className="text-gray-400 shrink-0" />
         <input
