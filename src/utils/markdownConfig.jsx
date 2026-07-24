@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import rehypeRaw from "rehype-raw";
 import { visit } from "unist-util-visit";
 import { slugify } from "./slugify";
 import { resolveWikiHref } from "./localLinks";
@@ -51,9 +52,21 @@ export function preprocessMarkdown(raw) {
 
   // Force $$...$$ onto its own blank-line-delimited block, regardless of
   // where it was declared, so it always renders as a block equation.
+  // Note: if $$...$$ is used inside a table cell (line contains '|'), do not insert blank lines.
   text = text.replace(
     /\$\$([\s\S]+?)\$\$/g,
-    (_m, expr) => `\n\n$$${expr.trim()}$$\n\n`,
+    (match, expr, offset, fullText) => {
+      const lineStart = fullText.lastIndexOf("\n", offset);
+      const lineEnd = fullText.indexOf("\n", offset);
+      const currentLine = fullText.slice(
+        lineStart === -1 ? 0 : lineStart + 1,
+        lineEnd === -1 ? fullText.length : lineEnd,
+      );
+      if (currentLine.includes("|")) {
+        return `$$${expr.trim()}$$`;
+      }
+      return `\n\n$$${expr.trim()}$$\n\n`;
+    },
   );
 
   return text;
@@ -70,6 +83,7 @@ const CALLOUT_TYPES = [
   "tip",
   "warning",
   "caution",
+  "question",
 ];
 
 const CALLOUT_STYLES = {
@@ -84,8 +98,8 @@ const CALLOUT_STYLES = {
     icon: "ℹ️",
   },
   important: {
-    container: "border-violet-600 bg-violet-50",
-    title: "text-violet-700",
+    container: "border-rose-600 bg-rose-50",
+    title: "text-rose-700",
     icon: "❗",
   },
   tip: {
@@ -102,6 +116,11 @@ const CALLOUT_STYLES = {
     container: "border-red-600 bg-red-50",
     title: "text-red-700",
     icon: "🚫",
+  },
+  question: {
+    container: "border-violet-600 bg-violet-50",
+    title: "text-violet-700",
+    icon: "❓",
   },
 };
 
@@ -187,7 +206,7 @@ export function rehypeHeadingIds() {
 }
 
 export const remarkPlugins = [remarkGfm, remarkMath, remarkCallouts];
-export const rehypePlugins = [rehypeKatex, rehypeHeadingIds];
+export const rehypePlugins = [rehypeRaw, rehypeKatex, rehypeHeadingIds];
 
 // ---------------------------------------------------------------------------
 // 3. Mermaid diagram renderer
@@ -228,55 +247,6 @@ function MermaidBlock({ code }) {
 // ---------------------------------------------------------------------------
 // 4. React component overrides for react-markdown
 // ---------------------------------------------------------------------------
-
-function cellChildrenToText(nodes) {
-  if (nodes === undefined || nodes === null) return "";
-  if (typeof nodes === "string") return nodes;
-  if (typeof nodes === "number") return String(nodes);
-  if (Array.isArray(nodes)) return nodes.map(cellChildrenToText).join("");
-  if (nodes.type === "br" || nodes.props?.mdxType === "br") return "\n";
-  if (nodes.props && "children" in nodes.props) {
-    return cellChildrenToText(nodes.props.children);
-  }
-  return "";
-}
-
-function nodesToMarkdown(nodes) {
-  if (nodes === undefined || nodes === null) return "";
-  if (typeof nodes === "string") return nodes;
-  if (typeof nodes === "number") return String(nodes);
-  if (Array.isArray(nodes)) return nodes.map(nodesToMarkdown).join("");
-
-  const type = nodes.type;
-  const props = nodes.props || {};
-  const children = props.children;
-
-  if (type === "br" || props.mdxType === "br") {
-    return "\n";
-  }
-  if (type === "strong" || type === "b") {
-    return `**${nodesToMarkdown(children)}**`;
-  }
-  if (type === "em" || type === "i") {
-    return `*${nodesToMarkdown(children)}*`;
-  }
-  if (type === "code") {
-    return `\`${nodesToMarkdown(children)}\``;
-  }
-  if (type === "a") {
-    return `[${nodesToMarkdown(children)}](${props.href || ""})`;
-  }
-  if (type === "img") {
-    return `![${props.alt || ""}](${props.src || ""})`;
-  }
-  if (type === "del") {
-    return `~~${nodesToMarkdown(children)}~~`;
-  }
-  if (props && "children" in props) {
-    return nodesToMarkdown(children);
-  }
-  return "";
-}
 
 export function createMarkdownComponents({ manifest, currentFilePath }) {
   function headingFactory(Tag) {
@@ -395,43 +365,26 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
     table({ children, ...props }) {
       return (
         <div className="overflow-x-auto my-4">
-          <table
-            className="min-w-full border border-gray-200 text-sm"
-            {...props}
-          >
+          <table className="min-w-full text-sm" {...props}>
             {children}
           </table>
         </div>
       );
     },
     th({ children, ...props }) {
-      const rawText = nodesToMarkdown(children).replace(/<br\s*\/?>/gi, "\n");
       return (
         <th
           className="border border-gray-200 bg-gray-50 px-3 py-2 text-left font-bold"
           {...props}
         >
-          <ReactMarkdown
-            remarkPlugins={remarkPlugins}
-            rehypePlugins={rehypePlugins}
-            components={nestedComponents}
-          >
-            {rawText}
-          </ReactMarkdown>
+          {children}
         </th>
       );
     },
     td({ children, ...props }) {
-      const rawText = nodesToMarkdown(children).replace(/<br\s*\/?>/gi, "\n");
       return (
         <td className="border border-gray-200 px-3 py-2 align-top" {...props}>
-          <ReactMarkdown
-            remarkPlugins={remarkPlugins}
-            rehypePlugins={rehypePlugins}
-            components={nestedComponents}
-          >
-            {rawText}
-          </ReactMarkdown>
+          {children}
         </td>
       );
     },
@@ -556,13 +509,6 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
         </code>
       );
     },
-  };
-
-  const nestedComponents = {
-    ...components,
-    table: ({ children }) => <>{children}</>,
-    th: ({ children }) => <>{children}</>,
-    td: ({ children }) => <>{children}</>,
   };
 
   return components;

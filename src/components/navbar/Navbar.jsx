@@ -1,4 +1,4 @@
-import React from "react";
+import { VscGithubInverted } from "react-icons/vsc";
 import { Link } from "react-router-dom";
 import { VscMenu } from "react-icons/vsc";
 import SearchBar from "./SearchBar";
@@ -20,6 +20,14 @@ export default function Navbar({ activeFileName, onToggleSidebar }) {
       >
         {activeFileName}
       </div>
+
+      <a
+        href="https://github.com/helitoo/IT-Obsidian-Notebook"
+        target="_blank"
+        title="Github repository"
+      >
+        <VscGithubInverted />
+      </a>
 
       <button
         onClick={onToggleSidebar}
