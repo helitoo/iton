@@ -41,15 +41,20 @@ export function routeToPath(routePath) {
     .join('/')
 }
 
-// Given the manifest (array of {path, name, ext}) and a raw route path
-// (as it appears after the domain, e.g. "" or "guides/setup"), find the
-// matching file entry. The root route ("") behaves like "readme".
+// Given the manifest (array of {id, path, name, ext}) and a raw route path
+// (e.g. "" or "1" or "2"), find the matching file entry by ID.
 export function findFileForRoute(manifest, rawRoutePath) {
   const decoded = routeToPath(rawRoutePath || '')
-  const normalized = (decoded === '' ? 'readme' : decoded).toLowerCase()
+  if (!decoded) {
+    return (
+      manifest.find((f) => withoutExt(f.path).toLowerCase() === 'readme') ||
+      manifest[0] ||
+      null
+    )
+  }
 
   return (
-    manifest.find((f) => withoutExt(f.path).toLowerCase() === normalized) ||
+    manifest.find((f) => String(f.id) === decoded) ||
     null
   )
 }

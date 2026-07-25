@@ -4,12 +4,87 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
+import katex from "katex";
 import { visit } from "unist-util-visit";
 import { slugify } from "./slugify";
 import { resolveWikiHref } from "./localLinks";
-import ReactMarkdown from "react-markdown";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css";
+
+// Các rule bắt buộc của katex.min.css mà file CSS hiện tại của dự án không có.
+// Ta "inline hóa" chúng trực tiếp vào node, thay vì phụ thuộc stylesheet ngoài.
+const KATEX_REQUIRED_STYLES = {
+  stretchy: "display:block;overflow:hidden;position:relative;width:100%;",
+  fbox: "box-sizing:border-box;",
+  cbox: "box-sizing:border-box;",
+  boxpad: "padding:0 0.3em;",
+};
+
+function patchMissingKatexStyles(tree) {
+  visit(tree, "element", (node) => {
+    const classList = node.properties && node.properties.className;
+    if (!Array.isArray(classList)) return;
+
+    for (const cls of classList) {
+      const extra = KATEX_REQUIRED_STYLES[cls];
+      if (!extra) continue;
+
+      const current = (node.properties.style || "").trim();
+      // Tránh chèn trùng nếu node đã có style đó (idempotent).
+      if (current.includes(extra)) continue;
+
+      node.properties.style = current ? `${current};${extra}` : extra;
+    }
+  });
+}
+
+// Bổ sung cơ chế định vị "vlist" — cốt lõi mà rất nhiều cấu trúc KaTeX
+// (phân số, boxed, accent, sqrt...) đều dựa vào để chồng các hàng lên nhau.
+function patchVlistPositioning(tree) {
+  visit(tree, "element", (node, index, parent) => {
+    const classList = (node.properties && node.properties.className) || [];
+    if (!Array.isArray(classList)) return;
+
+    const addStyle = (n, extra) => {
+      const current = (n.properties.style || "").trim();
+      if (current.includes(extra)) return;
+      n.properties.style = current ? `${current};${extra}` : extra;
+    };
+
+    if (classList.includes("vlist-t")) {
+      addStyle(node, "display:inline-table;");
+      if (classList.includes("vlist-t2")) addStyle(node, "margin-right:-2px;");
+    }
+    if (classList.includes("vlist-r")) {
+      addStyle(node, "display:table-row;");
+    }
+    if (classList.includes("vlist-s")) {
+      addStyle(
+        node,
+        "display:table-cell;vertical-align:bottom;font-size:1px;width:2px;",
+      );
+    }
+    // .vlist (nhưng không phải vlist-t/-r/-s)
+    if (
+      classList.includes("vlist") &&
+      !classList.some((c) => ["vlist-t", "vlist-r", "vlist-s"].includes(c))
+    ) {
+      addStyle(
+        node,
+        "display:table-cell;vertical-align:bottom;position:relative;",
+      );
+      // các span con trực tiếp — mỗi span này là 1 "hàng" có inline style top:...
+      (node.children || []).forEach((row) => {
+        if (row.type !== "element" || row.tagName !== "span") return;
+        addStyle(row, "display:block;height:0;position:relative;");
+        (row.children || []).forEach((inner) => {
+          if (inner.type !== "element" || inner.tagName !== "span") return;
+          addStyle(inner, "display:inline-block;");
+        });
+      });
+    }
+  });
+}
 
 // ---------------------------------------------------------------------------
 // 1. Text preprocessing (runs on the raw markdown string before it reaches
@@ -28,13 +103,20 @@ function encodeWikiTarget(target) {
 }
 
 export function preprocessMarkdown(raw) {
+  if (!raw || typeof raw !== "string") return "";
   let text = raw;
+
+  // Convert leading tabs (\t) at line starts to 2 spaces.
+  // In Obsidian, sub-lists use tab indentation (\t). Standard CommonMark/GFM
+  // treats a leading tab as 4 spaces (Indented Code Block) if not preceded by a parent list.
+  // Converting leading tabs to 2 spaces per tab ensures lists remain valid lists rather than code blocks.
+  text = text.replace(/^(\t+)/gm, (_, tabs) => "  ".repeat(tabs.length));
 
   // Embeds: ![[target]] or ![[target|alt]]
   text = text.replace(
     /!\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,
     (_m, target, alt) => {
-      const t = target.trim();
+      const t = (target || "").trim();
       const a = (alt || t).trim();
       return `![${a}](${encodeWikiTarget(t)})`;
     },
@@ -44,18 +126,18 @@ export function preprocessMarkdown(raw) {
   text = text.replace(
     /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,
     (_m, target, label) => {
-      const t = target.trim();
+      const t = (target || "").trim();
       const l = (label || t).trim();
       return `[${l}](${encodeWikiTarget(t)})`;
     },
   );
 
-  // Force $$...$$ onto its own blank-line-delimited block, regardless of
-  // where it was declared, so it always renders as a block equation.
+  // Force $$...$$ onto its own line/block cleanly while preserving list item indentation.
   // Note: if $$...$$ is used inside a table cell (line contains '|'), do not insert blank lines.
   text = text.replace(
     /\$\$([\s\S]+?)\$\$/g,
     (match, expr, offset, fullText) => {
+      if (expr == null) return match;
       const lineStart = fullText.lastIndexOf("\n", offset);
       const lineEnd = fullText.indexOf("\n", offset);
       const currentLine = fullText.slice(
@@ -65,7 +147,9 @@ export function preprocessMarkdown(raw) {
       if (currentLine.includes("|")) {
         return `$$${expr.trim()}$$`;
       }
-      return `\n\n$$${expr.trim()}$$\n\n`;
+      const indentMatch = currentLine.match(/^(\s*)/);
+      const indent = indentMatch ? indentMatch[1] : "";
+      return `\n${indent}$$\n${indent}${expr.trim()}\n${indent}$$\n`;
     },
   );
 
@@ -205,8 +289,171 @@ export function rehypeHeadingIds() {
   };
 }
 
+// Custom rehype-katex wrapper to filter out KaTeX console warnings for non-ASCII/Vietnamese characters
+// and character metrics while passing KaTeX configuration options.
+// If any LaTeX/KaTeX math node has invalid syntax or throws an error (or generates "undefined"),
+// we catch it and display the raw markdown math text as plain text.
+function safeRehypeKatex(options) {
+  let opts = options;
+  let directTree = null;
+  let directFile = null;
+
+  if (options && typeof options === "object" && options.type === "root") {
+    directTree = options;
+    opts = {};
+  }
+
+  const defaultOptions = {
+    strict: "ignore",
+    trust: true,
+    throwOnError: false,
+    ...opts,
+  };
+
+  const katexPlugin = rehypeKatex(defaultOptions);
+
+  const runner = (tree, file) => {
+    if (!tree) return tree;
+
+    // Filter out non-critical KaTeX console warnings for non-ASCII/Vietnamese characters
+    const originalWarn = console.warn;
+    console.warn = (...args) => {
+      const msg = typeof args[0] === "string" ? args[0] : "";
+      if (
+        msg.includes("No character metrics for") ||
+        msg.includes("LaTeX-incompatible input") ||
+        msg.includes("Unrecognized Unicode character") ||
+        msg.includes("character metrics")
+      ) {
+        return;
+      }
+      originalWarn.apply(console, args);
+    };
+
+    try {
+      // 1. Pre-pass: Validate all math nodes with KaTeX throwOnError: true.
+      // If any math expression has wrong syntax or throws an error, convert it to plain text.
+      visit(tree, (node) => {
+        if (!node) return;
+
+        const isMathNode =
+          node.type === "inlineMath" ||
+          node.type === "math" ||
+          node.tagName === "inlineMath" ||
+          node.tagName === "math" ||
+          (node.type === "element" &&
+            node.properties &&
+            node.properties.className &&
+            Array.isArray(node.properties.className) &&
+            (node.properties.className.includes("math") ||
+              node.properties.className.includes("math-inline") ||
+              node.properties.className.includes("math-display") ||
+              node.properties.className.some(
+                (c) => typeof c === "string" && c.startsWith("language-math"),
+              )));
+
+        if (!isMathNode) return;
+
+        const isDisplay =
+          node.type === "math" ||
+          node.tagName === "math" ||
+          (node.properties &&
+            node.properties.className &&
+            Array.isArray(node.properties.className) &&
+            (node.properties.className.includes("math-display") ||
+              node.properties.className.includes("displayMode")));
+
+        const rawCode = hastToText(node) || node.value || "";
+        if (!rawCode || !rawCode.trim()) return;
+
+        let isValid = true;
+        try {
+          const rendered = katex.renderToString(rawCode.trim(), {
+            displayMode: isDisplay,
+            throwOnError: true,
+            trust: true,
+            strict: "ignore",
+          });
+          if (
+            !rendered ||
+            typeof rendered !== "string" ||
+            rendered.includes("undefined")
+          ) {
+            isValid = false;
+          }
+        } catch {
+          isValid = false;
+        }
+
+        if (!isValid) {
+          // Syntax error or KaTeX failure: render as plain text paragraph/span
+          const rawText = isDisplay
+            ? `$$${rawCode.trim()}$$`
+            : `$${rawCode.trim()}$`;
+          node.type = "element";
+          node.tagName = isDisplay ? "div" : "span";
+          node.properties = {
+            className: isDisplay
+              ? "math-fallback-block my-2 font-mono text-sm text-gray-800 whitespace-pre-wrap bg-gray-50 p-2.5 rounded border border-gray-200"
+              : "math-fallback-inline font-mono text-sm text-gray-800 bg-gray-100 px-1.5 py-0.5 rounded",
+          };
+          node.children = [{ type: "text", value: rawText }];
+          delete node.value;
+        }
+      });
+
+      // 2. Run standard rehypeKatex on valid nodes
+      katexPlugin(tree, file);
+      patchMissingKatexStyles(tree);
+      patchVlistPositioning(tree);
+    } catch (e) {
+      console.error("rehypeKatex execution error ignored:", e);
+    } finally {
+      console.warn = originalWarn;
+    }
+
+    // 3. Post-pass: Clean up any leftover katex-error or "undefined" text nodes in HAST tree
+    visit(tree, (node, index, parent) => {
+      if (!node) return;
+
+      if (
+        node.type === "element" &&
+        node.properties &&
+        node.properties.className &&
+        Array.isArray(node.properties.className) &&
+        node.properties.className.includes("katex-error")
+      ) {
+        const errorText = hastToText(node) || "";
+        node.tagName = "span";
+        node.properties = {
+          className: "font-mono text-sm text-gray-700 bg-gray-100 px-1 rounded",
+        };
+        node.children = [
+          { type: "text", value: errorText.replace(/^ParseError:\s*/i, "") },
+        ];
+      }
+
+      if (node.type === "text" && node.value === "undefined") {
+        if (parent && Array.isArray(parent.children) && index != null) {
+          parent.children.splice(index, 1);
+        } else {
+          node.value = "";
+        }
+      }
+    });
+
+    return tree;
+  };
+
+  if (directTree) {
+    return runner(directTree, directFile);
+  }
+
+  return runner;
+}
+
 export const remarkPlugins = [remarkGfm, remarkMath, remarkCallouts];
-export const rehypePlugins = [rehypeRaw, rehypeKatex, rehypeHeadingIds];
+export const rehypePlugins = [rehypeRaw, safeRehypeKatex, rehypeHeadingIds];
 
 // ---------------------------------------------------------------------------
 // 3. Mermaid diagram renderer
@@ -248,12 +495,21 @@ function MermaidBlock({ code }) {
 // 4. React component overrides for react-markdown
 // ---------------------------------------------------------------------------
 
+function cleanChildren(children) {
+  if (children == null || children === "undefined") return null;
+  if (Array.isArray(children)) {
+    const filtered = children.filter((c) => c != null && c !== "undefined");
+    return filtered.length === 0 ? null : filtered;
+  }
+  return children;
+}
+
 export function createMarkdownComponents({ manifest, currentFilePath }) {
   function headingFactory(Tag) {
     return function Heading({ id, children, ...props }) {
       return (
         <Tag id={id} className="scroll-mt-6 font-bold" {...props}>
-          {children}
+          {cleanChildren(children)}
         </Tag>
       );
     };
@@ -267,6 +523,7 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
     h5: headingFactory("h5"),
     h6: headingFactory("h6"),
     a({ href, children, ...props }) {
+      const safeChild = cleanChildren(children);
       if (href) {
         const isExternal =
           /^(https?:)?\/\//.test(href) ||
@@ -288,7 +545,7 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
               className="text-blue-600 hover:underline font-medium"
               {...props}
             >
-              {children}
+              {safeChild}
             </a>
           );
         }
@@ -303,7 +560,7 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
                   className="text-blue-600 hover:underline font-medium"
                   {...props}
                 >
-                  {children}
+                  {safeChild}
                 </Link>
               );
             }
@@ -316,11 +573,11 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
                   className="text-blue-600 hover:underline font-medium"
                   {...props}
                 >
-                  {children}
+                  {safeChild}
                 </a>
               );
             }
-            return <span {...props}>{children}</span>;
+            return <span {...props}>{safeChild}</span>;
           } catch (e) {
             console.error("Failed to decode local link href:", href, e);
           }
@@ -334,7 +591,7 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
           className="text-blue-600 hover:underline font-medium"
           {...props}
         >
-          {children}
+          {safeChild}
         </a>
       );
     },
@@ -366,7 +623,7 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
       return (
         <div className="overflow-x-auto my-4">
           <table className="min-w-full text-sm" {...props}>
-            {children}
+            {cleanChildren(children)}
           </table>
         </div>
       );
@@ -377,42 +634,42 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
           className="border border-gray-200 bg-gray-50 px-3 py-2 text-left font-bold"
           {...props}
         >
-          {children}
+          {cleanChildren(children)}
         </th>
       );
     },
     td({ children, ...props }) {
       return (
         <td className="border border-gray-200 px-3 py-2 align-top" {...props}>
-          {children}
+          {cleanChildren(children)}
         </td>
       );
     },
     p({ children, ...props }) {
       return (
         <p className="my-3 leading-relaxed text-gray-800" {...props}>
-          {children}
+          {cleanChildren(children)}
         </p>
       );
     },
     li({ children, ...props }) {
       return (
         <li className="text-gray-800 leading-relaxed" {...props}>
-          {children}
+          {cleanChildren(children)}
         </li>
       );
     },
     strong({ children, ...props }) {
       return (
         <strong className="font-bold text-gray-900" {...props}>
-          {children}
+          {cleanChildren(children)}
         </strong>
       );
     },
     em({ children, ...props }) {
       return (
         <em className="italic" {...props}>
-          {children}
+          {cleanChildren(children)}
         </em>
       );
     },
@@ -425,21 +682,21 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
           className="border-l-4 border-gray-300 pl-4 italic text-gray-600 my-4"
           {...props}
         >
-          {children}
+          {cleanChildren(children)}
         </blockquote>
       );
     },
     ul({ children, ...props }) {
       return (
         <ul className="list-disc pl-6 my-2 space-y-1" {...props}>
-          {children}
+          {cleanChildren(children)}
         </ul>
       );
     },
     ol({ children, ...props }) {
       return (
         <ol className="list-decimal pl-6 my-2 space-y-1" {...props}>
-          {children}
+          {cleanChildren(children)}
         </ol>
       );
     },
@@ -448,9 +705,10 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
       const codeClassName =
         codeEl && codeEl.props ? codeEl.props.className : "";
       const match = /language-([\w+#-]+)/.exec(codeClassName || "");
+      const rawChildren = codeEl && codeEl.props ? codeEl.props.children : "";
       const codeText =
-        codeEl && codeEl.props
-          ? String(codeEl.props.children).replace(/\n$/, "")
+        rawChildren != null && rawChildren !== "undefined"
+          ? String(rawChildren).replace(/\n$/, "")
           : "";
 
       if (match && match[1] === "mermaid") {
@@ -472,7 +730,7 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
             } overflow-x-auto my-0 text-sm`}
             {...props}
           >
-            {children}
+            {cleanChildren(children)}
           </pre>
         </div>
       );
@@ -480,9 +738,13 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
     code({ className, children, ...props }) {
       const match = /language-([\w+#-]+)/.exec(className || "");
       const isFenced = !!match;
+      const codeText =
+        children != null && children !== "undefined"
+          ? String(children).replace(/\n$/, "")
+          : "";
+
       if (isFenced) {
         const lang = match[1];
-        const codeText = String(children).replace(/\n$/, "");
         let highlightedHtml = "";
         try {
           if (hljs.getLanguage(lang)) {
@@ -505,24 +767,11 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
       }
       return (
         <code className="bg-gray-100 rounded px-1.5 py-0.5 text-sm" {...props}>
-          {children}
+          {cleanChildren(children)}
         </code>
       );
     },
   };
 
   return components;
-}
-
-function childrenToText(children) {
-  if (typeof children === "string") return children;
-  if (Array.isArray(children)) return children.map(childrenToText).join("");
-  if (children && children.props && children.props.children) {
-    return childrenToText(children.props.children);
-  }
-  return "";
-}
-
-function decodeParens(text) {
-  return text.replace(/%28/g, "(").replace(/%29/g, ")");
 }

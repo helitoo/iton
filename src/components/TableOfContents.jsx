@@ -39,7 +39,7 @@ export default function TableOfContents({ headings }) {
     const el = document.getElementById(targetId) || document.getElementById(id);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
-      window.history.pushState(null, "", `#${targetId}`);
+      window.history.pushState(null, "", `${window.location.pathname}#${targetId}`);
     }
     setOpen(false);
   }

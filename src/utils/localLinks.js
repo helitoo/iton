@@ -1,4 +1,4 @@
-import { withoutExt, dirOf, pathToRoute, fileKind } from './pathUtils'
+import { withoutExt, dirOf, fileKind } from './pathUtils'
 import { contentUrl } from './context/manifest'
 
 // Resolve a wikilink target (e.g. "Setup", "images/logo.png", "Setup.md")
@@ -59,7 +59,7 @@ export function resolveWikiHref(manifest, currentFilePath, target) {
   if (!file) return { type: 'missing', href: '#' }
   const kind = fileKind(file.ext)
   if (kind === 'markdown') {
-    return { type: 'route', href: '/' + pathToRoute(withoutExt(file.path)) }
+    return { type: 'route', href: '/' + file.id }
   }
   return { type: 'url', href: contentUrl(file.path) }
 }

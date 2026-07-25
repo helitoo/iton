@@ -1,4 +1,3 @@
-import { withoutExt, pathToRoute } from '../pathUtils'
 
 // Turns the flat manifest array into a nested tree:
 // { type: 'folder', name, path, children: [...] }
@@ -25,7 +24,8 @@ export function buildTree(manifest) {
       type: 'file',
       name: segments[segments.length - 1],
       path: file.path,
-      route: pathToRoute(withoutExt(file.path)),
+      id: file.id,
+      route: String(file.id),
       ext: file.ext,
     })
   }

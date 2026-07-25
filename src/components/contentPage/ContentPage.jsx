@@ -15,7 +15,7 @@ export default function ContentPage() {
   const routePath = location.pathname.replace(/^\//, "");
   const file = useMemo(
     () => (manifestLoading ? null : findFileForRoute(manifest, routePath)),
-    [manifest, manifestLoading, routePath]
+    [manifest, manifestLoading, routePath],
   );
 
   const [text, setText] = useState("");
@@ -63,7 +63,9 @@ export default function ContentPage() {
     timeoutRef.current = setTimeout(() => {
       setStatus((currentStatus) => {
         if (currentStatus === "loading") {
-          setErrorMessage("Thời gian tải nội dung quá 10 giây. Vui lòng thử lại.");
+          setErrorMessage(
+            "Thời gian tải nội dung quá 10 giây. Vui lòng thử lại.",
+          );
           return "error";
         }
         return currentStatus;
@@ -78,7 +80,9 @@ export default function ContentPage() {
 
     if (!file) {
       setStatus("error");
-      setErrorMessage("Không tìm thấy nội dung.");
+      setErrorMessage(
+        "Contents do not exist or have been renamed, please check again.",
+      );
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       return () => {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -88,7 +92,7 @@ export default function ContentPage() {
     const kind = fileKind(file.ext);
     if (kind === "markdown" || kind === "text") {
       let isSubscribed = true;
-      fetch(contentUrl(file.path))
+      fetch(contentUrl(file.path), { cache: "no-store" })
         .then((res) => {
           if (!res.ok) throw new Error("Không thể tải tệp nội dung.");
           return res.text();
@@ -123,7 +127,10 @@ export default function ContentPage() {
   if (status === "error" || (!manifestLoading && !file)) {
     return (
       <FailedScene
-        message={errorMessage || "Không tìm thấy nội dung."}
+        message={
+          errorMessage ||
+          "Contents do not exist or have been renamed, please check again."
+        }
         onReload={handleReload}
       />
     );

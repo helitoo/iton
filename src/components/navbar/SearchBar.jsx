@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { VscSearch, VscClose } from "react-icons/vsc";
 import { useContentData } from "../../utils/context/ContentContext";
 import { searchFiles } from "../../utils/search";
-import { withoutExt } from "../../utils/pathUtils";
 
 export default function SearchBar() {
   const { manifest } = useContentData();
@@ -39,11 +38,7 @@ export default function SearchBar() {
   }, [query, manifest]);
 
   function goTo(file) {
-    const route = withoutExt(file.path)
-      .split("/")
-      .map(encodeURIComponent)
-      .join("/");
-    navigate(`/${route}`);
+    navigate(`/${file.id}`);
     setOpen(false);
     setQuery("");
   }
