@@ -39,7 +39,11 @@ export default function TableOfContents({ headings }) {
     const el = document.getElementById(targetId) || document.getElementById(id);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
-      window.history.pushState(null, "", `${window.location.pathname}#${targetId}`);
+      window.history.pushState(
+        null,
+        "",
+        `${window.location.pathname}#${targetId}`,
+      );
     }
     setOpen(false);
   }
@@ -65,7 +69,7 @@ export default function TableOfContents({ headings }) {
 
       <button
         onClick={() => setOpen((o) => !o)}
-        className="cursor-pointer fixed bottom-6 right-4 z-50 w-12 h-12 rounded-full bg-blue-600 text-white shadow-lg flex items-center justify-center hover:bg-blue-700 toc-button"
+        className="cursor-pointer size-10 rounded-full bg-blue-600 text-white shadow-lg flex items-center justify-center hover:bg-blue-700 toc-button"
         aria-label="Bật/tắt mục lục"
       >
         {open ? <VscClose size={20} /> : <VscListUnordered size={20} />}
