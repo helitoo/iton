@@ -266,6 +266,41 @@ export function remarkCallouts() {
   };
 }
 
+// A remark plugin that recognizes inline code immediately preceding a code block
+// (e.g. `abc..` followed by ```...```) as the filename header for that code block.
+export function remarkCodeBlockFilename() {
+  return (tree) => {
+    visit(tree, "code", (node, index, parent) => {
+      if (!parent || index == null || index === 0) return;
+
+      const prevNode = parent.children[index - 1];
+      if (!prevNode || prevNode.type !== "paragraph") return;
+
+      const nonSpaceChildren = (prevNode.children || []).filter((child) => {
+        if (child.type === "text") {
+          return child.value && child.value.trim().length > 0;
+        }
+        return true;
+      });
+
+      if (
+        nonSpaceChildren.length === 1 &&
+        nonSpaceChildren[0].type === "inlineCode"
+      ) {
+        const filename = (nonSpaceChildren[0].value || "").trim();
+        if (filename) {
+          node.data = node.data || {};
+          node.data.hProperties = node.data.hProperties || {};
+          node.data.hProperties["data-filename"] = filename;
+
+          parent.children.splice(index - 1, 1);
+          return index - 1;
+        }
+      }
+    });
+  };
+}
+
 function hastToText(node) {
   if (!node) return "";
   if (node.type === "text") return node.value || "";
@@ -452,7 +487,12 @@ function safeRehypeKatex(options) {
   return runner;
 }
 
-export const remarkPlugins = [remarkGfm, remarkMath, remarkCallouts];
+export const remarkPlugins = [
+  remarkGfm,
+  remarkMath,
+  remarkCallouts,
+  remarkCodeBlockFilename,
+];
 export const rehypePlugins = [rehypeRaw, safeRehypeKatex, rehypeHeadingIds];
 
 // ---------------------------------------------------------------------------
@@ -708,7 +748,7 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
       const rawChildren = codeEl && codeEl.props ? codeEl.props.children : "";
       const codeText =
         rawChildren != null && rawChildren !== "undefined"
-          ? String(rawChildren).replace(/\n$/, "")
+          ? String(rawChildren).replace(/[\r\n]+$/, "")
           : "";
 
       if (match && match[1] === "mermaid") {
@@ -716,18 +756,50 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
       }
 
       const lang = match ? match[1] : null;
+      const filename =
+        codeEl && codeEl.props
+          ? codeEl.props["data-filename"] || codeEl.props.dataFilename
+          : null;
+
+      if (filename) {
+        return (
+          <div className="code-block-wrapper my-4 rounded-md border border-gray-200 overflow-hidden bg-white shadow-xs">
+            <div className="code-block-header flex items-center justify-between px-4 py-2 bg-gray-100/80 border-b border-gray-200 text-xs font-mono font-medium text-gray-700">
+              <div className="flex items-center gap-2 truncate">
+                <span className="truncate">{filename}</span>
+              </div>
+              {lang && (
+                <span className="px-2 py-0.5 text-xs font-mono font-medium text-gray-500 bg-white border border-gray-200 rounded leading-none shrink-0 ml-2 select-none">
+                  {lang}
+                </span>
+              )}
+            </div>
+            <pre
+              className="overflow-x-auto text-sm bg-white border-0 rounded-none"
+              style={{ margin: 0, padding: "0.75rem 1rem" }}
+              {...props}
+            >
+              {cleanChildren(children)}
+            </pre>
+          </div>
+        );
+      }
 
       return (
         <div className="code-block-wrapper relative group my-4">
           {lang && (
-            <div className="code-block-badge absolute top-2 right-2 z-10 inline-flex items-center justify-center px-2 py-0.5 text-xs font-mono font-medium text-gray-500 bg-gray-100/90 border border-gray-200/80 rounded shadow-xs select-none pointer-events-none leading-none">
+            <div className="code-block-badge absolute top-2 right-2 z-10 inline-flex items-center justify-center px-2 py-0.5 text-xs font-mono font-medium text-gray-500 bg-white border border-gray-200/80 rounded shadow-xs select-none pointer-events-none leading-none">
               {lang}
             </div>
           )}
           <pre
-            className={`bg-white border border-gray-200 rounded-md p-4 ${
+            className={`bg-white border border-gray-200 rounded-md ${
               lang ? "pr-16" : ""
-            } overflow-x-auto my-0 text-sm`}
+            } overflow-x-auto text-sm`}
+            style={{
+              margin: 0,
+              padding: lang ? "0.875rem 4rem 0.875rem 1rem" : "0.875rem 1rem",
+            }}
             {...props}
           >
             {cleanChildren(children)}
@@ -737,17 +809,18 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
     },
     code({ className, children, ...props }) {
       const match = /language-([\w+#-]+)/.exec(className || "");
-      const isFenced = !!match;
+      const hasFilename = !!(props["data-filename"] || props.dataFilename);
+      const isFenced = !!match || hasFilename;
       const codeText =
         children != null && children !== "undefined"
-          ? String(children).replace(/\n$/, "")
+          ? String(children).replace(/[\r\n]+$/, "")
           : "";
 
       if (isFenced) {
-        const lang = match[1];
+        const lang = match ? match[1] : null;
         let highlightedHtml = "";
         try {
-          if (hljs.getLanguage(lang)) {
+          if (lang && hljs.getLanguage(lang)) {
             highlightedHtml = hljs.highlight(codeText, {
               language: lang,
             }).value;
@@ -759,7 +832,7 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
         }
         return (
           <code
-            className={`${className} hljs`}
+            className={`${className || ""} hljs`}
             dangerouslySetInnerHTML={{ __html: highlightedHtml }}
             {...props}
           />
