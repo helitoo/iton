@@ -544,6 +544,127 @@ function cleanChildren(children) {
   return children;
 }
 
+function MarkdownImage({
+  src,
+  alt,
+  manifest,
+  currentFilePath,
+  className = "",
+  ...props
+}) {
+  let resolvedSrc = src;
+  if (src) {
+    const isExternal = /^(https?:)?\/\//.test(src);
+    if (!isExternal) {
+      try {
+        const target = decodeURIComponent(src);
+        const resolved = resolveWikiHref(manifest, currentFilePath, target);
+        resolvedSrc = resolved.type === "missing" ? "" : resolved.href;
+      } catch (e) {
+        console.error("Failed to decode image src:", src, e);
+      }
+    }
+  }
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const imgRef = useRef(null);
+
+  useEffect(() => {
+    if (!resolvedSrc) {
+      setIsLoading(false);
+      setHasError(true);
+      return;
+    }
+
+    if (imgRef.current && imgRef.current.complete) {
+      if (imgRef.current.naturalWidth > 0) {
+        setIsLoading(false);
+        setHasError(false);
+      } else {
+        setIsLoading(false);
+        setHasError(true);
+      }
+    } else {
+      setIsLoading(true);
+      setHasError(false);
+    }
+  }, [resolvedSrc]);
+
+  const handleLoad = () => {
+    setIsLoading(false);
+    setHasError(false);
+  };
+
+  const handleError = () => {
+    setIsLoading(false);
+    setHasError(true);
+  };
+
+  if (hasError || !resolvedSrc) {
+    return (
+      <span className="inline-flex flex-col items-center justify-center w-full max-w-md p-4 my-3 mx-auto rounded-md border border-gray-200 bg-gray-50 text-gray-500 text-xs gap-1.5 select-none">
+        <svg
+          className="w-6 h-6 text-gray-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+          />
+        </svg>
+        <span>Không tải được hình ảnh{alt ? `: ${alt}` : ""}</span>
+      </span>
+    );
+  }
+
+  return (
+    <span className="block relative my-3 mx-auto max-w-full text-center">
+      {isLoading && (
+        <span
+          aria-hidden="true"
+          className="inline-flex flex-col items-center justify-center w-full max-w-2xl h-56 sm:h-72 bg-gray-200/80 rounded-md animate-pulse text-gray-400 select-none"
+        >
+          <svg
+            className="w-10 h-10 mb-2 opacity-40 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+            />
+          </svg>
+          {alt && (
+            <span className="text-xs text-gray-400 truncate max-w-xs px-2 font-normal">
+              {alt}
+            </span>
+          )}
+        </span>
+      )}
+      <img
+        ref={imgRef}
+        src={resolvedSrc}
+        alt={alt}
+        onLoad={handleLoad}
+        onError={handleError}
+        className={`max-w-full rounded-md mx-auto transition-opacity duration-300 ${
+          isLoading ? "hidden" : "inline-block"
+        } ${className}`.trim()}
+        draggable={false}
+        {...props}
+      />
+    </span>
+  );
+}
+
 export function createMarkdownComponents({ manifest, currentFilePath }) {
   function headingFactory(Tag) {
     return function Heading({ id, children, ...props }) {
@@ -635,26 +756,11 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
         </a>
       );
     },
-    img({ src, alt, ...props }) {
-      let resolvedSrc = src;
-      if (src) {
-        const isExternal = /^(https?:)?\/\//.test(src);
-        if (!isExternal) {
-          try {
-            const target = decodeURIComponent(src);
-            const resolved = resolveWikiHref(manifest, currentFilePath, target);
-            resolvedSrc = resolved.type === "missing" ? "" : resolved.href;
-          } catch (e) {
-            console.error("Failed to decode image src:", src, e);
-          }
-        }
-      }
+    img(props) {
       return (
-        <img
-          src={resolvedSrc}
-          alt={alt}
-          className="max-w-full rounded-md my-3 mx-auto"
-          draggable={false}
+        <MarkdownImage
+          manifest={manifest}
+          currentFilePath={currentFilePath}
           {...props}
         />
       );
