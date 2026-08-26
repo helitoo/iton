@@ -9,13 +9,16 @@ export const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'i
 export const PDF_EXTS = ['pdf']
 
 export function extOf(name) {
-  const idx = name.lastIndexOf('.')
-  return idx === -1 ? '' : name.slice(idx + 1).toLowerCase()
+  if (!name) return ''
+  const base = name.slice(name.lastIndexOf('/') + 1)
+  const match = /\.([a-zA-Z0-9]+)$/.exec(base)
+  return match ? match[1].toLowerCase() : ''
 }
 
 export function withoutExt(filePath) {
-  const idx = filePath.lastIndexOf('.')
-  return idx === -1 ? filePath : filePath.slice(0, idx)
+  if (!filePath) return ''
+  const match = /\.[a-zA-Z0-9]+$/.exec(filePath)
+  return match ? filePath.slice(0, match.index) : filePath
 }
 
 export function dirOf(filePath) {

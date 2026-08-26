@@ -7,7 +7,7 @@ import rehypeRaw from "rehype-raw";
 import katex from "katex";
 import { visit } from "unist-util-visit";
 import { slugify } from "./slugify";
-import { resolveWikiHref } from "./localLinks";
+import { resolveWikiHref, parseWikiLink } from "./localLinks";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css";
 
@@ -113,24 +113,16 @@ export function preprocessMarkdown(raw) {
   text = text.replace(/^(\t+)/gm, (_, tabs) => "  ".repeat(tabs.length));
 
   // Embeds: ![[target]] or ![[target|alt]]
-  text = text.replace(
-    /!\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,
-    (_m, target, alt) => {
-      const t = (target || "").trim();
-      const a = (alt || t).trim();
-      return `![${a}](${encodeWikiTarget(t)})`;
-    },
-  );
+  text = text.replace(/!\[\[([^\]]+)\]\]/g, (_m, content) => {
+    const { target, alias } = parseWikiLink(content);
+    return `![${alias}](${encodeWikiTarget(target)})`;
+  });
 
   // Links: [[target]] or [[target|text]]
-  text = text.replace(
-    /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,
-    (_m, target, label) => {
-      const t = (target || "").trim();
-      const l = (label || t).trim();
-      return `[${l}](${encodeWikiTarget(t)})`;
-    },
-  );
+  text = text.replace(/\[\[([^\]]+)\]\]/g, (_m, content) => {
+    const { target, alias } = parseWikiLink(content);
+    return `[${alias}](${encodeWikiTarget(target)})`;
+  });
 
   // Force $$...$$ onto its own line/block cleanly while preserving list item indentation.
   // Note: if $$...$$ is used inside a table cell (line contains '|'), do not insert blank lines.
@@ -714,6 +706,25 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
           try {
             const target = decodeURIComponent(href);
             const resolved = resolveWikiHref(manifest, currentFilePath, target);
+            if (resolved.type === "anchor") {
+              return (
+                <a
+                  href={resolved.href}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const id = decodeURIComponent(resolved.href.replace("#", ""));
+                    const el = document.getElementById(id);
+                    if (el) {
+                      el.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }
+                  }}
+                  className="text-blue-600 hover:underline font-medium"
+                  {...props}
+                >
+                  {safeChild}
+                </a>
+              );
+            }
             if (resolved.type === "route") {
               return (
                 <Link
@@ -738,7 +749,11 @@ export function createMarkdownComponents({ manifest, currentFilePath }) {
                 </a>
               );
             }
-            return <span {...props}>{safeChild}</span>;
+            return (
+              <span className="text-gray-500" {...props}>
+                {safeChild}
+              </span>
+            );
           } catch (e) {
             console.error("Failed to decode local link href:", href, e);
           }
