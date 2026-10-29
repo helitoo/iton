@@ -71,6 +71,9 @@ export default function MarkdownView({ file, raw, manifest }) {
       style={{ height: "calc(100vh - 3.5rem)" }}
     >
       <div className="px-6 py-8 max-w-4xl mx-auto markdown-body">
+        <h1 className="text-3xl font-bold mb-6 pb-2 border-b border-gray-200 text-gray-900 break-words">
+          {file?.name}
+        </h1>
         <article className="prose-content">
           <ReactMarkdown
             remarkPlugins={remarkPlugins}

@@ -53,6 +53,11 @@ export default function ContentPage() {
 
   useEffect(() => {
     setActiveFileName(file ? file.name : "");
+    if (file?.name) {
+      document.title = `${file.name} - iton`;
+    } else {
+      document.title = "iton";
+    }
   }, [file, setActiveFileName]);
 
   useEffect(() => {
@@ -149,17 +154,22 @@ export default function ContentPage() {
           <LoadingScene message="Đang tải hình ảnh..." />
         )}
         <div
-          className={`px-6 py-8 flex justify-center ${
+          className={`px-6 py-8 max-w-4xl mx-auto ${
             status === "loading" ? "hidden" : ""
           }`}
         >
-          <img
-            src={contentUrl(file.path)}
-            alt={file.name}
-            onLoad={handleMediaLoad}
-            onError={() => handleMediaError("Không thể tải hình ảnh.")}
-            className="max-w-full rounded-md shadow-sm"
-          />
+          <h1 className="text-3xl font-bold mb-6 pb-2 border-b border-gray-200 text-gray-900 break-words">
+            {file.name}
+          </h1>
+          <div className="flex justify-center">
+            <img
+              src={contentUrl(file.path)}
+              alt={file.name}
+              onLoad={handleMediaLoad}
+              onError={() => handleMediaError("Không thể tải hình ảnh.")}
+              className="max-w-full rounded-md shadow-sm"
+            />
+          </div>
         </div>
       </>
     );
@@ -172,15 +182,20 @@ export default function ContentPage() {
           <LoadingScene message="Đang tải tệp PDF..." />
         )}
         <div
-          className={`w-full ${status === "loading" ? "hidden" : ""}`}
+          className={`w-full flex flex-col ${status === "loading" ? "hidden" : ""}`}
           style={{ height: "calc(100vh - 3.5rem)" }}
         >
+          <div className="px-6 py-3 border-b border-gray-200 bg-white">
+            <h1 className="text-xl font-bold text-gray-900 truncate">
+              {file.name}
+            </h1>
+          </div>
           <iframe
             title={file.name}
             src={contentUrl(file.path)}
             onLoad={handleMediaLoad}
             onError={() => handleMediaError("Không thể tải tệp PDF.")}
-            className="w-full h-full border-0"
+            className="w-full flex-1 border-0"
           />
         </div>
       </>
@@ -198,6 +213,9 @@ export default function ContentPage() {
   // Plain text / other raw text formats
   return (
     <div className="px-6 py-8 max-w-4xl mx-auto">
+      <h1 className="text-3xl font-bold mb-6 pb-2 border-b border-gray-200 text-gray-900 break-words">
+        {file.name}
+      </h1>
       <pre className="whitespace-pre-wrap wrap-break-word bg-gray-50 border border-gray-200 rounded-md p-4 text-sm text-gray-800">
         {text}
       </pre>
