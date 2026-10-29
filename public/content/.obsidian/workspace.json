@@ -1,0 +1,220 @@
+{
+  "main": {
+    "id": "5f1c8c9f459c8862",
+    "type": "split",
+    "children": [
+      {
+        "id": "029f40ac40f63de6",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "a5b34f4a291d91fe",
+            "type": "leaf",
+            "state": {
+              "type": "pdf",
+              "state": {
+                "file": "2. Data/3. Kho dữ liệu (Data warehouse) và OLAP/0. Bài tập/CK2_2023-2024_questions.pdf"
+              },
+              "icon": "lucide-file-text",
+              "title": "CK2_2023-2024_questions"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "ffd1520f7a36f3cf",
+    "type": "split",
+    "children": [
+      {
+        "id": "8dc64b1f9b9f96ae",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "1edc889b8f8c1ff3",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Trình duyệt tệp"
+            }
+          },
+          {
+            "id": "11fc170294715057",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "fold",
+                "matchingCase": true,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Tìm kiếm"
+            }
+          },
+          {
+            "id": "0be3c59ee5e7c84f",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Đánh dấu"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 285.08609771728516
+  },
+  "right": {
+    "id": "fef15c42c46c132c",
+    "type": "split",
+    "children": [
+      {
+        "id": "bd09adac5778d2b8",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "007bfe553e5f8eda",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "Front-end/TypeScript.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Liên kết đến của TypeScript"
+            }
+          },
+          {
+            "id": "076a0dc3104ce1b4",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "Web/Back-end/Express JS/Giới thiệu & Cài đặt Express JS.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Liên kết đi ra từ Giới thiệu & Cài đặt Express JS"
+            }
+          },
+          {
+            "id": "0faa40351e6c4c8a",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "373bd21cb27d45d5",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "2. Data/3. Kho dữ liệu (Data warehouse) và OLAP/0. Bài tập/CK2_2023-2024_questions.pdf",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Đề cương"
+            }
+          }
+        ],
+        "currentTab": 3
+      }
+    ],
+    "direction": "horizontal",
+    "width": 292.9832763671875
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "bases:Tạo cơ sở mới": false,
+      "switcher:Mở bộ chuyển đổi nhanh": false,
+      "graph:Mở xem biểu đồ": false,
+      "canvas:Tạo bảng mới": false,
+      "daily-notes:Mở ghi chú hôm nay": false,
+      "templates:Chèn mẫu": false,
+      "command-palette:Mở khay lệnh": false
+    }
+  },
+  "active": "a5b34f4a291d91fe",
+  "lastOpenFiles": [
+    "2. Data/3. Kho dữ liệu (Data warehouse) và OLAP/0. Bài tập/CK2_2023-2024-solution.md",
+    "2. Data/3. Kho dữ liệu (Data warehouse) và OLAP/0. Bài tập/CK2_2023-2024_questions.pdf",
+    "2. Data/3. Kho dữ liệu (Data warehouse) và OLAP/0. Bài tập/CK1_2017-2018_1_solution.md",
+    "2. Data/3. Kho dữ liệu (Data warehouse) và OLAP/0. Bài tập/CK1_2017-2018_1_questions.pdf",
+    "2. Phát triển ứng dụng Web/1. Nhập môn lập trình web/4. JavaScript (Vanilla)/4. RegEx.md",
+    "2. Phát triển ứng dụng Web/1. Nhập môn lập trình web/4. JavaScript (Vanilla)/4. Một số API của browser.md",
+    "2. Phát triển ứng dụng Web/1. Nhập môn lập trình web/4. JavaScript (Vanilla)/4. Module.md",
+    "2. Phát triển ứng dụng Web/1. Nhập môn lập trình web/4. JavaScript (Vanilla)/4. Fetch API.md",
+    "2. Phát triển ứng dụng Web/1. Nhập môn lập trình web/4. JavaScript (Vanilla)/4. Callback và Promise.md",
+    "2. Phát triển ứng dụng Web/1. Nhập môn lập trình web/4. JavaScript (Vanilla)/3. Kiểu dữ liệu và toán tử.md",
+    "2. Phát triển ứng dụng Web/1. Nhập môn lập trình web/4. JavaScript (Vanilla)/3. Điều khiển luồng logic.md",
+    "2. Phát triển ứng dụng Web/1. Nhập môn lập trình web/4. JavaScript (Vanilla)/2. Cú pháp cơ bản của JS.md",
+    "2. Phát triển ứng dụng Web/1. Nhập môn lập trình web/4. JavaScript (Vanilla)/1. Giới thiệu & Cài đặt JavaScript.md",
+    "2. Phát triển ứng dụng Web/1. Nhập môn lập trình web/1. Nhập môn lập trình web.md",
+    "2. Phát triển ứng dụng Web/1. Nhập môn lập trình web/3. CSS/CSS - TailwindCSS view.md",
+    "2. Phát triển ứng dụng Web/1. Nhập môn lập trình web/3. CSS/CSS.md",
+    "2. Phát triển ứng dụng Mobile/1. Android Native.md",
+    "2. Phát triển ứng dụng Mobile/2. React Native.md",
+    "2. Phát triển ứng dụng Web/1. Nhập môn lập trình web/2. HTML.md",
+    "2. Phát triển ứng dụng Web/2. Front-end frameworks/jQuery.md",
+    "2. Phát triển ứng dụng Web/1. Nhập môn lập trình web/4. SSR và CSR.md",
+    "2. Data/2. Dữ liệu lớn (Big data) và Luồng dữ liệu (Data pipeline)/Apache Hadoop/2. YARN.md",
+    "2. Data/2. Dữ liệu lớn (Big data) và Luồng dữ liệu (Data pipeline)/Apache Hadoop/2. HDFS (Hadoop Distributes File System).md",
+    "2. Data/2. Dữ liệu lớn (Big data) và Luồng dữ liệu (Data pipeline)/Apache Hadoop/3. MapReduce.md",
+    "2. Data/2. Dữ liệu lớn (Big data) và Luồng dữ liệu (Data pipeline)/Apache Hadoop/1. Giới thiệu Apache Hadoop.md",
+    "2. Data/2. Dữ liệu lớn (Big data) và Luồng dữ liệu (Data pipeline)/Apache Hadoop/0. Assets/map-reduce-word-count-sample-view2.png",
+    "2. Data/2. Dữ liệu lớn (Big data) và Luồng dữ liệu (Data pipeline)/Apache Hadoop/0. Assets/Screenshot 2026-10-23 145238.png",
+    "2. Data/2. Dữ liệu lớn (Big data) và Luồng dữ liệu (Data pipeline)/Apache Hadoop/0. Assets/map-reduce-word-count-sample-view1.png",
+    "2. Data/2. Dữ liệu lớn (Big data) và Luồng dữ liệu (Data pipeline)/Apache Hadoop/0. Assets/Screenshot 2026-10-23 144858.png",
+    "2. Data/3. Học máy (Machine learning) và Học sâu (Deep learning)/1. Giới thiệu về ML/2. Data leakage.md",
+    "2. Data/3. Học máy (Machine learning) và Học sâu (Deep learning)/1. Giới thiệu về ML/2. Feature engineering.md",
+    "Chưa đặt tên.base",
+    "Chưa đặt tên 1.base",
+    "2. Data/3. Kho dữ liệu (Data warehouse) và OLAP/0. Bài tập/CK1_2017-2018_1_db.svg",
+    "2. Data/3. Kho dữ liệu (Data warehouse) và OLAP/0. Bài tập/CK2_2023-2024_db.svg",
+    "Pasted image 20260522201112.png",
+    "Pasted image 20261021171656.png",
+    "1. Kiến thức đại cương/3. Nhập môn lập trình Java/0. Bài tập/CK2_2022-2023_questions.pdf",
+    "2. Data/3. Kho dữ liệu (Data warehouse) và OLAP/0. Bài tập/Không được xác nhận 766966.crdownload",
+    "2. Data/3. Kho dữ liệu (Data warehouse) và OLAP/0. Bài tập/Không được xác nhận 513096.crdownload",
+    "2. Data/3. Kho dữ liệu (Data warehouse) và OLAP/0. Bài tập",
+    "1. Kiến thức đại cương/2. Cấu trúc dữ liệu & Giải thuật (DSA)/Cấu trúc dữ liệu & Giải thuật.pdf",
+    "2. Data/2. Dữ liệu lớn (Big data) và Luồng dữ liệu (Data pipeline)/Apache Hadoop/0. Assets/map-reduce-sample.png",
+    "2. Data/2. Dữ liệu lớn (Big data) và Luồng dữ liệu (Data pipeline)/Apache Hadoop/0. Assets",
+    "1. Kiến thức đại cương/1. Git & Github/0. Assets/merge.svg"
+  ]
+}
